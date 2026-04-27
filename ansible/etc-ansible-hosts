@@ -42,3 +42,16 @@ mac-browsing-session.local
 squidvm.lan
 pop-os.local
 bkpcrit-target.local
+
+
+[win11]
+win11vm-beelink         ansible_host=172.16.25.263
+
+[win11:vars]
+ansible_user=user
+ansible_password=vmuser
+ansible_connection=winrm
+ansible_winrm_transport=basic
+ansible_port=5985
+ansible_winrm_server_cert_validation=ignore
+ansible_python_interpreter='C:\Python314\python.exe'
