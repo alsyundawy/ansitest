@@ -1,6 +1,7 @@
 ---
 - hosts: localhost
   become: true
+  gather_facts: false
   tasks:
     - name: Backup ansible hosts file using current time
       ansible.builtin.copy:
@@ -18,7 +19,7 @@
 #        create: yes
 #        mode: '0644'
 
-    - name: Add new instance to specifif inventory section
+    - name: Add new instance to specific inventory section
       ansible.builtin.lineinfile:
         path: /etc/ansible/hosts
         insertafter: "^.{{stanza}}]"

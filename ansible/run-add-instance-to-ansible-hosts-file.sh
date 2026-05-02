@@ -21,7 +21,8 @@ echo '====='
 
 stanza=$1
 [ "$stanza" = "" ] && failexit 44 "Arg1 stanza must not be blank!"
-[ $(grep -c "$stanza" $myfile) -gt 0 ] || failexit 45 "Arg1 stanza specified is not found in $myfile!"
+[ $(grep -c "^\[$stanza\]" $myfile) -gt 0 ] || failexit 45 "Arg1 stanza specified is not found in $myfile!"
+# needs to match exact text or will add to EOF
 
 nhn=$2 
 [ "$nhn" = "" ] && failexit 46 "Arg2 newhostname must not be blank!"
