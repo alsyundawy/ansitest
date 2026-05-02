@@ -1,0 +1,27 @@
+---
+- hosts: localhost
+  become: true
+  tasks:
+    - name: Backup ansible hosts file using current time
+      ansible.builtin.copy:
+        src: /etc/ansible/hosts
+        dest: "/etc/ansible/hosts-backup-{{ now(fmt='%Y%m%d@%H%M_%S') }}"
+#    remote_src: true
+
+#    - name: Add host to specific inventory section
+#      ansible.builtin.ini_file:
+#        path: /etc/ansible/hosts
+#        section: "{{ stanza }}"
+#        option: "{{ newhostname }}"
+#    value: ansible_host=192.168.1.100
+#        no_extra_spaces: yes
+#        create: yes
+#        mode: '0644'
+
+    - name: Add new instance to specifif inventory section
+      ansible.builtin.lineinfile:
+        path: /etc/ansible/hosts
+        insertafter: "^.{{stanza}}]"
+        line: "{{ newhostname }}"
+        state: present
+      become: yes

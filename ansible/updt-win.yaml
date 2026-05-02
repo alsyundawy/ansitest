@@ -1,0 +1,130 @@
+---
+- hosts: win11
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Check instance connectivity (early abort if target is down)
+      ansible.builtin.wait_for_connection:
+        timeout: 35
+      ignore_unreachable: true
+      register: reachability_check
+
+    - name: This Task only runs if instance = reachable
+      ansible.builtin.debug:
+        msg: "Host is reachable!"
+      when: reachability_check is not unreachable
+
+    - name: "[{{ inventory_hostname }}] Run Update Session Orchestrator check to clear GUI cached results"
+      ansible.windows.win_shell: |
+        UsoClient RefreshSettings
+        UsoClient ScanInstallWait
+
+    - name: Clear Windows Update cache
+      ansible.windows.win_shell: Remove-Item -Path "C:\Windows\SoftwareDistribution\Download\*" -Recurse -Force
+
+- name: Search-only, return list of found updates if any, log to C\ .txt file
+  hosts: win11
+  gather_facts: false
+  tasks:
+    - name: Log found updates to file
+      ansible.windows.win_updates:
+        category_names: SecurityUpdates
+        state: searched
+        log_path: C:\ansible_winupdts-list.txt
+
+- name: Show Free Space on Windows C Drive
+  hosts: win11
+  tasks:
+    - name: Get free space on C drive
+      ansible.windows.win_shell: 
+        (Get-PSDrive C).Free / 1MB
+      register: c_drive_free_mb
+    - name: Display free space
+      ansible.builtin.debug:
+        msg: "Free space on C: {{ c_drive_free_mb.stdout | trim | float | round(2) }} MB"
+      ansible.builtin.debug:
+        var: c_drive_free_mb.stdout_lines
+
+# Search and download Windows updates
+- name: Search and download Windows updates without installing them - NOTE need enough free space on C drive
+  hosts: win11
+  gather_facts: false
+  become: yes
+  become_method: runas
+  become_user: SYSTEM
+  tasks:
+    - name: Download available Win updates
+      ansible.windows.win_updates:
+        state: downloaded
+        log_path: C:\ansible_winupdts-download.txt
+
+#- name: Install all outstanding Win updates and reboot as many times as needed - SNAPSHOT/BACKUP INSTANCE 1ST! - use for freshinstall
+#  hosts: win11
+#  gather_facts: true
+#  tasks:
+#    ansible.windows.win_updates:
+#      category_names: '*'
+#      reboot: true
+#      reboot_timeout: 900 # 15 min
+
+- name: Install all security updates with automatic reboots
+  hosts: win11
+  gather_facts: false
+  become: yes
+  become_method: runas
+  become_user: SYSTEM
+  tasks:
+    - name: Install + auto reboot
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+        reboot: true
+        reboot_timeout: 600 # 10 min
+        
+- name: Install all security, critical, and rollup updates without a scheduled task
+  hosts: win11
+  gather_facts: false
+  tasks:
+    - name: Install security, crit, rollup updates
+      ansible.windows.win_updates:
+        category_names:
+           - SecurityUpdates
+           - CriticalUpdates
+           - UpdateRollups
+      become: true
+      become_method: runas
+      become_user: SYSTEM
+
+- name: Restart Windows Update Service
+  hosts: win11
+  gather_facts: false
+  tasks:
+    - name: Restart svc wuauserv
+      ansible.windows.win_service:
+        name: wuauserv
+        state: restarted
+
+#- name: Install only particular updates based on the KB numbers
+#  ansible.windows.win_updates:
+#    category_names:
+#      - SecurityUpdates
+#    accept_list:
+#      - KB4056892
+#      - KB4073117
+
+#- name: Exclude updates based on the update title
+#  hosts: win11
+#  tasks:
+#      ansible.windows.win_updates:
+#      category_names:
+#        - SecurityUpdates
+#        - CriticalUpdates
+#      reject_list:
+#        - Windows Malicious Software Removal Tool for Windows
+#        - \d{4}-\d{2} Cumulative Update for Windows Server 2016
+
+# Optionally, you can increase the reboot_timeout to survive long updates during reboot
+#- name: Ensure we wait long enough for the updates to be applied during reboot
+#  ansible.windows.win_updates:
+#    reboot: true
+#    reboot_timeout: 3600
