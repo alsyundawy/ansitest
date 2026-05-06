@@ -1,0 +1,102 @@
+---
+- hosts: "{{ target }}"
+  gather_facts: yes
+  become: true
+# NOT TESTED YET
+# 2026.May kneutron
+  tasks:
+    - name: Check instance connectivity (skip if target is down)
+      ansible.builtin.wait_for_connection:
+        timeout: 35
+      ignore_unreachable: true
+      register: reachability_check
+      become: false
+
+    - name: Early abort - This Task only runs if instance = reachable
+      ansible.builtin.debug:
+        msg: "Host is reachable!"
+      when: reachability_check is not unreachable
+      become: false
+
+    - name: Install EPEL release package
+      yum:
+        name: epel-release
+        state: present
+
+    - name: Update DNF cache
+      ansible.builtin.dnf:
+        update_cache: yes
+
+    - name: Install a list of packages most_needed admin tools
+      ansible.builtin.dnf:
+        name:
+          - joe
+          - mc
+          - screen
+          - netcat
+          - bwm-ng
+          - openssh-server
+          - smartmontools
+          - sysstat
+          - mbuffer
+          - ethtool
+          - parted
+          - iotop
+          - mlocate
+        state: present
+
+    - name: Install another list of useful pkgs
+      ansible.builtin.dnf:
+        name:
+          - lm_sensors
+          - hddtemp
+          - dos2unix
+          - p7zip
+          - unrar
+          - parallel
+          - lzop
+          - pigz
+          - xz
+          - lsscsi
+          - sdparm
+          - sg3_utils
+          - lftp
+          - nmap
+          - iptraf-ng
+          - autossh
+        state: present
+
+    - name: install zfs file sharing stuff
+      ansible.builtin.dnf:
+        name:
+          - samba
+          - samba-client
+          - cifs-utils
+        state: present
+
+#  - name: if zfs module loaded, display importable pools
+#    shell: "[ $(lsmod |grep -c zfs) -gt 0 ] && zpool import"
+##      executable: /bin/bash
+#    ignore_errors: yes
+
+    - name: Finally - update any remaining outdated packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+
+    - name: Install yum-utils if needed
+      ansible.builtin.package:
+        name: yum-utils
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Check if reboot is required
+      ansible.builtin.command: needs-restarting -r
+      register: result
+      ignore_errors: true
+
+    - name: Reboot server if necessary
+      ansible.builtin.reboot:
+        msg: "Ansible Updates Triggered - rebooting server"
+        reboot_timeout: 3600
+      when: result.rc == 1
