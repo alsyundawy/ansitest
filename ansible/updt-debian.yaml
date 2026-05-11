@@ -18,20 +18,28 @@
         update_cache: yes
         cache_valid_time: 3600
 
+    - name: Log packages to be upgraded to dated file
+      ansible.builtin.shell: "apt-get -s upgrade > /root/ansible-packages-to-upgrade-$(date +%Y%m%d@%M_%S).log"
+      register: pkgstoupgrade
+
+    - name: Show packages to be upgraded
+      ansible.builtin.debug:
+        msg: "{{ pkgstoupgrade.stdout }}"
+
     - name: Upgrade all packages
       ansible.builtin.apt:
         upgrade: full
         autoremove: yes
         autoclean: yes
       register: apt_result
-      timeout: 1800 # 30 min
+      timeout: 1200 # 20 min
       
     - name: Show apt output
       ansible.builtin.debug:
         var: apt_result
 
     - name: Check if a reboot is needed
-      stat:
+      ansible.builtin.stat:
         path: /var/run/reboot-required
       register: reboot_required
 
