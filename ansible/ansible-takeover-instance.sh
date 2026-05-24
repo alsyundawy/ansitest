@@ -3,26 +3,13 @@
 # 2026.Apr kneutron
 
 # NOTE you can run  ansible-sshcopyid-nopass.sh  script beforehand to get ssh access
-# Get this script on target via netcat/tar: 
-#	On target:
-#		dnf install -y tar nc openssh-server
-#		nc -l -p 32100 |tar xpvf -
-#	On ansible controller:
-#		tar cpvf - $0 |nc -w 2 ip-of-target 32100
-#
-# wget - can use 1-liner http server:
-#	On ansible controller:
-#		python -m http.server 80
-#	On target: (install wget 1st if needed)
-#		wget http://ip-of-ansible-controller/$0
-#
-# Or use iso to deliver
-#
-# Regardless of method, chmod +x the script before running as root
 
 echo "o Run this as root on new debian // rhel/rocky/alma Linux instance to prep as ansible target for updates, etc"
 logf=~/$(basename $0).log
 touch $logf
+
+# TODO editme - default user
+myid=dave
 
 # if node=debian
 result=$(grep -ic debian /etc/os-release)
@@ -49,18 +36,16 @@ if [ $result -gt 0 ]; then
   dnf install -y avahi avahi-tools mdns-scan nss-mdns 2>>$logf
   systemctl restart avahi-daemon
   
-  dnf install -y joe mc screen tmux vim nano pigz openssh-server wget tar nc 2>>$logf
+  dnf install -y joe mc screen tmux vim nano pigz openssh-server wget 2>>$logf
   systemctl restart sshd
 fi
 
-
-# TODO editme - default user
-myid=dave
+# Create main id and setpass
 # need to grab stderror or not work
 if [ $((id $myid) 2>&1 |grep -c 'no such user') -gt 0 ]; then
  echo "o Creating $myid and setting password" |tee -a $logf
  useradd --create-home $myid
- echo -e '12348675\n12348675' |passwd $myid
+ echo -e '87612345\n87612345' |passwd $myid
 else
  echo "o $myid already exists" |tee -a $logf
 fi
@@ -73,11 +58,17 @@ id $myid
 
 [ -e /mnt/disc ] || mkdir -pv /mnt/disc
 
+if [ $(grep -c '^#boojum' /etc/sudoers) -eq 0 ]; then
+  cp -vf /etc/sudoers /etc/sudoers.bkp.$(date +%Y%m%d@%H%M_%S)
+  echo "#boojum
+$myid    ALL=(ALL) NOPASSWD: ALL" >>/etc/sudoers
+
+fi
 
 # final check for supported OS
 result=$(grep -E -ic 'debian|rhel|fedora' /etc/os-release)
 if [ $result -eq 0 ]; then
-  echo "o Unknown target node type, must be debian or rhel/fedora-derived"
+  echo "o Unknown target node type, must be debian or RHEL/Fedora-derived"
   exit 44;
 fi
 
