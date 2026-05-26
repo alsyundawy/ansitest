@@ -45,7 +45,8 @@ fi
 if [ $((id $myid) 2>&1 |grep -c 'no such user') -gt 0 ]; then
  echo "o Creating $myid and setting password" |tee -a $logf
  useradd --create-home $myid
- echo -e '87612345\n87612345' |passwd $myid
+# echo -e '87612345\n87612345' |passwd $myid
+ usermod -p "$(openssl passwd -6 '87612345')" $myid # alt.way, doesnt ask for current password   
 else
  echo "o $myid already exists" |tee -a $logf
 fi
@@ -71,6 +72,8 @@ if [ $result -eq 0 ]; then
   echo "o Unknown target node type, must be debian or RHEL/Fedora-derived"
   exit 44;
 fi
+
+echo "o DONT FORGET to  ssh-copy-id $user@$(hostname -i |tr ' ' '\n')  before running ansible on $(hostname -s)"
 
 ls -lh $logf 
 touch ~/$(basename $0).ran

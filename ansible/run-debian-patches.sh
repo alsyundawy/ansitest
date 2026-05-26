@@ -1,6 +1,10 @@
 #!/bin/bash
 
-ansible-playbook -vv updt-debian.yaml 2>&1 |tee /var/log/ansible/$(basename $0)-$(date +%Y%m%d@%H%M_%S).log
+if [ "$1" = "" ]; then
+  ansible-playbook -vv updt-debian.yaml 2>&1 |tee /var/log/ansible/$(basename $0)-$(date +%Y%m%d@%H%M_%S).log
+else
+  ansible-playbook -vv updt-debian.yaml --limit "$@" 2>&1 |tee /var/log/ansible/$(basename $0)-limited-$(date +%Y%m%d@%H%M_%S).log
+fi
 
 date
 
